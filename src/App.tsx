@@ -7,6 +7,7 @@ import { QuickSearchModal } from './components/QuickSearchModal.tsx';
 import { TopBar, type AppView } from './components/TopBar.tsx';
 import { INITIAL_CAREERS } from './data/careersSeed.ts';
 import { CAREER_CLUSTERS } from './data/clusters.ts';
+import { apiGetClusters, apiGetOccupationById } from './services/careerApi.ts';
 import type { CareerProfile, ClusterWithStats } from './types/career.ts';
 
 const CHECKLIST_STORAGE_KEY = 'careerating_checklist_v1';
@@ -96,15 +97,12 @@ export default function App() {
 
   const refreshClusters = useCallback(async () => {
     try {
-      const res = await fetch('/api/clusters');
-      if (res.ok) {
-        const data = (await res.json()) as ClusterWithStats[];
-        if (Array.isArray(data) && data.length === 18) {
-          setClusters(data);
-        }
+      const data = await apiGetClusters();
+      if (Array.isArray(data) && data.length === 18) {
+        setClusters(data);
       }
     } catch {
-      // Keep fallback clusters if offline
+      // Keep fallback clusters if unavailable
     }
   }, []);
 
@@ -114,11 +112,11 @@ export default function App() {
     const existing = inFlightRef.current.get(id);
     if (existing) return existing;
 
-    const promise = fetch(`/api/occupations/${encodeURIComponent(id)}`)
-      .then(async (res) => {
-        if (!res.ok) return null;
-        const profile = (await res.json()) as CareerProfile;
-        setProfileCache((prev) => ({ ...prev, [profile.id]: profile }));
+    const promise = apiGetOccupationById(id)
+      .then((profile) => {
+        if (profile) {
+          setProfileCache((prev) => ({ ...prev, [profile.id]: profile }));
+        }
         return profile;
       })
       .catch(() => null)

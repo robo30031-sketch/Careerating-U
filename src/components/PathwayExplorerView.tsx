@@ -8,10 +8,10 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { apiQueryOccupations } from '../services/careerApi.ts';
 import type {
   CareerProfile,
   OccupationSummary,
-  PaginatedOccupationsResponse,
   SupportedCountry,
 } from '../types/career.ts';
 
@@ -100,11 +100,8 @@ export function PathwayExplorerView({
     let cancelled = false;
     setPickerLoading(true);
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams({ limit: '15', page: '1' });
-      if (pickerQuery.trim()) params.set('q', pickerQuery.trim());
-      fetch(`/api/occupations?${params.toString()}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: PaginatedOccupationsResponse | null) => {
+      apiQueryOccupations({ limit: 15, page: 1, q: pickerQuery.trim() })
+        .then((data) => {
           if (!cancelled && data && Array.isArray(data.items)) {
             setPickerOptions(data.items);
           }

@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { apiQueryOccupations } from '../services/careerApi.ts';
 import type {
   CareerProfile,
   CareerStatus,
@@ -100,28 +101,25 @@ export function CatalogHome({
 
   useEffect(() => {
     let cancelled = false;
-    const params = new URLSearchParams();
-    if (selectedClusterId !== 'all') params.set('clusterId', selectedClusterId);
-    if (industryFilter !== 'All') params.set('industry', industryFilter);
-    if (specialisationFilter !== 'All') params.set('specialisation', specialisationFilter);
-    if (statusFilter !== 'All') params.set('status', statusFilter);
-    if (letterFilter) params.set('letter', letterFilter);
-    if (featuredOnly) params.set('featured', 'true');
-    if (debouncedQuery) params.set('q', debouncedQuery);
-    params.set('page', String(page));
-    params.set('limit', String(PAGE_LIMIT));
-
     setLoading(true);
-    fetch(`/api/occupations?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: PaginatedOccupationsResponse | null) => {
+    apiQueryOccupations({
+      clusterId: selectedClusterId,
+      industry: industryFilter,
+      specialisation: specialisationFilter,
+      status: statusFilter,
+      letter: letterFilter,
+      featured: featuredOnly,
+      q: debouncedQuery,
+      page,
+      limit: PAGE_LIMIT,
+    })
+      .then((data) => {
         if (cancelled) return;
         if (data && Array.isArray(data.items)) {
           setDirectoryData(data);
         }
       })
       .catch(() => {
-        // Fallback to local filter if offline
         if (cancelled) return;
         const q = debouncedQuery.toLowerCase();
         const filtered = fallbackCareers

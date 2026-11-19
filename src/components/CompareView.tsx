@@ -1,10 +1,7 @@
 import { ArrowRight, Plus, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type {
-  CareerProfile,
-  OccupationSummary,
-  PaginatedOccupationsResponse,
-} from '../types/career.ts';
+import { apiGetCompareOccupations, apiQueryOccupations } from '../services/careerApi.ts';
+import type { CareerProfile, OccupationSummary } from '../types/career.ts';
 import { StatusIndicator } from './StatusIndicator.tsx';
 
 interface CompareViewProps {
@@ -53,9 +50,8 @@ export function CompareView({
 
     let cancelled = false;
     setLoadingCompare(true);
-    fetch(`/api/occupations/compare?ids=${encodeURIComponent(missing.join(','))}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: CareerProfile[] | null) => {
+    apiGetCompareOccupations(missing)
+      .then((data) => {
         if (!cancelled && Array.isArray(data) && data.length > 0) {
           setFetchedMap((prev) => {
             const next = { ...prev };
@@ -82,11 +78,8 @@ export function CompareView({
     let cancelled = false;
     setPickerLoading(true);
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams({ limit: '15', page: '1' });
-      if (pickerQuery.trim()) params.set('q', pickerQuery.trim());
-      fetch(`/api/occupations?${params.toString()}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: PaginatedOccupationsResponse | null) => {
+      apiQueryOccupations({ limit: 15, page: 1, q: pickerQuery.trim() })
+        .then((data) => {
           if (!cancelled && data && Array.isArray(data.items)) {
             setPickerOptions(data.items.filter((item) => !compareIds.includes(item.id)));
           }

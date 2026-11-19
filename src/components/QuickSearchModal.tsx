@@ -1,10 +1,7 @@
 import { ArrowRight, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type {
-  CareerProfile,
-  OccupationSummary,
-  PaginatedOccupationsResponse,
-} from '../types/career.ts';
+import { apiQueryOccupations } from '../services/careerApi.ts';
+import type { CareerProfile, OccupationSummary } from '../types/career.ts';
 import { StatusIndicator } from './StatusIndicator.tsx';
 
 interface QuickSearchModalProps {
@@ -54,13 +51,9 @@ export function QuickSearchModal({
     let cancelled = false;
     const timer = window.setTimeout(() => {
       const q = query.trim();
-      const params = new URLSearchParams({ limit: '16', page: '1' });
-      if (q) params.set('q', q);
-
       setLoading(true);
-      fetch(`/api/occupations?${params.toString()}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: PaginatedOccupationsResponse | null) => {
+      apiQueryOccupations({ limit: 16, page: 1, q })
+        .then((data) => {
           if (cancelled) return;
           if (data && Array.isArray(data.items)) {
             setResults(data.items);
