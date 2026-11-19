@@ -1,0 +1,6 @@
+{
+  "name": "CAREERATING-U",
+  "description": "Comprehensive career encyclopedia featuring 16-section professional profiles across all 18 career clusters, pathway explorers, and comparison tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
