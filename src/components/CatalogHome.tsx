@@ -4,6 +4,7 @@ import {
   ChevronRight,
   GitCompare,
   Search,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type {
@@ -78,11 +79,15 @@ export function CatalogHome({
   }));
 
   useEffect(() => {
+    const trimmed = searchQuery.trim();
     const timer = window.setTimeout(() => {
-      setDebouncedQuery(searchQuery.trim());
+      if (trimmed !== debouncedQuery) {
+        setDebouncedQuery(trimmed);
+        setPage(1);
+      }
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, debouncedQuery]);
 
   // Reset cascading sub-filters when cluster changes
   const handleSelectCluster = (clusterId: string) => {
@@ -244,12 +249,12 @@ export function CatalogHome({
         </div>
 
         <div className="lg:col-span-5 flex flex-col">
-          <div className="relative flex-1 min-h-[260px] lg:min-h-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
+          <div className="relative flex-1 min-h-[240px] aspect-[4/3] lg:aspect-auto lg:max-h-[400px] overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
             <SafeImage
               src="/src/assets/images/ascend_editorial_atelier_1795001231748.jpg"
               alt="Multidisciplinary research study room with architectural models, microscope, and bound reference volumes"
               title="CAREERATING-U Career Encyclopedia"
-              className="w-full h-full lg:h-full object-cover"
+              className="w-full h-full object-cover"
             />
           </div>
           <p className="text-xs font-serif italic text-stone-500 mt-2">
@@ -386,14 +391,21 @@ export function CatalogHome({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search title, alias, industry, subject, or tool..."
                 aria-label="Filter career profiles"
-                className="w-full pl-9 pr-3 py-2 text-sm bg-[#FAF9F6] border border-stone-200 rounded-md text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#1E3A8A]"
+                className="w-full pl-9 pr-8 py-2 text-sm bg-[#FAF9F6] border border-stone-200 rounded-md text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#1E3A8A]"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search query"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

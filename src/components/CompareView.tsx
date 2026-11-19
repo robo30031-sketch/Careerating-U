@@ -23,8 +23,12 @@ export function CompareView({
   onBackToCatalog,
 }: CompareViewProps) {
   const [fetchedMap, setFetchedMap] = useState<Record<string, CareerProfile>>({});
+  const fetchedRef = useRef<Record<string, CareerProfile>>(fetchedMap);
+  fetchedRef.current = fetchedMap;
+  const [loadingCompare, setLoadingCompare] = useState(false);
   const [pickerQuery, setPickerQuery] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerOptions, setPickerOptions] = useState<OccupationSummary[]>([]);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -41,13 +45,18 @@ export function CompareView({
 
   // Fetch full profiles for compareIds not already in profileCache
   useEffect(() => {
-    const missing = compareIds.filter((id) => !profileCache[id] && !fetchedMap[id]);
-    if (missing.length === 0) return;
+    const missing = compareIds.filter((id) => !profileCache[id] && !fetchedRef.current[id]);
+    if (missing.length === 0) {
+      setLoadingCompare(false);
+      return;
+    }
 
+    let cancelled = false;
+    setLoadingCompare(true);
     fetch(`/api/occupations/compare?ids=${encodeURIComponent(missing.join(','))}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: CareerProfile[] | null) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (!cancelled && Array.isArray(data) && data.length > 0) {
           setFetchedMap((prev) => {
             const next = { ...prev };
             for (const item of data) next[item.id] = item;
@@ -57,13 +66,21 @@ export function CompareView({
       })
       .catch(() => {
         // Ignore offline errors
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCompare(false);
       });
-  }, [compareIds, profileCache, fetchedMap]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [compareIds, profileCache]);
 
   // Search occupations for picker dropdown
   useEffect(() => {
     if (!pickerOpen) return;
     let cancelled = false;
+    setPickerLoading(true);
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ limit: '15', page: '1' });
       if (pickerQuery.trim()) params.set('q', pickerQuery.trim());
@@ -106,6 +123,9 @@ export function CompareView({
               }));
             setPickerOptions(fallback);
           }
+        })
+        .finally(() => {
+          if (!cancelled) setPickerLoading(false);
         });
     }, 150);
 
@@ -164,7 +184,11 @@ export function CompareView({
 
             {pickerOpen && (
               <div className="absolute right-0 left-0 mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-30 max-h-72 overflow-y-auto divide-y divide-stone-100">
-                {pickerOptions.length === 0 ? (
+                {pickerLoading ? (
+                  <div className="p-3 text-xs text-stone-500">
+                    Searching encyclopedia...
+                  </div>
+                ) : pickerOptions.length === 0 ? (
                   <div className="p-3 text-xs text-stone-500">
                     No matching professions found.
                   </div>
@@ -196,7 +220,11 @@ export function CompareView({
         )}
       </div>
 
-      {selectedCareers.length === 0 ? (
+      {loadingCompare && selectedCareers.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-lg p-12 text-center">
+          <p className="font-serif text-lg text-stone-700">Loading comparison matrix...</p>
+        </div>
+      ) : selectedCareers.length === 0 ? (
         <div className="bg-white border border-stone-200 rounded-lg p-12 text-center space-y-4">
           <h2 className="font-serif text-xl font-semibold text-stone-900">
             No professions selected for comparison yet

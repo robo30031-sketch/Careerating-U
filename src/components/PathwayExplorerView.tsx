@@ -50,8 +50,10 @@ export function PathwayExplorerView({
   const [selectedCountry, setSelectedCountry] = useState<SupportedCountry>('India');
   const [pickerQuery, setPickerQuery] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerOptions, setPickerOptions] = useState<OccupationSummary[]>([]);
   const [loadingCareer, setLoadingCareer] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,19 +77,28 @@ export function PathwayExplorerView({
     if (selectedId && !profileCache[selectedId]) {
       let cancelled = false;
       setLoadingCareer(true);
-      onFetchCareer(selectedId).finally(() => {
-        if (!cancelled) setLoadingCareer(false);
-      });
+      setLoadError(null);
+      onFetchCareer(selectedId)
+        .then((res) => {
+          if (!cancelled && !res) {
+            setLoadError(`Could not load pathway details for "${selectedId}".`);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingCareer(false);
+        });
       return () => {
         cancelled = true;
       };
     }
     setLoadingCareer(false);
+    setLoadError(null);
   }, [selectedId, profileCache, onFetchCareer]);
 
   useEffect(() => {
     if (!pickerOpen) return;
     let cancelled = false;
+    setPickerLoading(true);
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ limit: '15', page: '1' });
       if (pickerQuery.trim()) params.set('q', pickerQuery.trim());
@@ -130,6 +141,9 @@ export function PathwayExplorerView({
                 }))
             );
           }
+        })
+        .finally(() => {
+          if (!cancelled) setPickerLoading(false);
         });
     }, 150);
 
@@ -147,6 +161,23 @@ export function PathwayExplorerView({
             Loading education & skill pathway...
           </p>
           <p className="text-xs text-stone-500 font-mono">{selectedId}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (loadError && !profileCache[selectedId]) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="bg-white border border-stone-200 rounded-lg p-12 text-center space-y-4">
+          <p className="font-serif text-xl text-stone-900">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => setSelectedId(cachedValues[0]?.id || 'aerospace-engineer')}
+            className="px-4 py-2 text-sm font-medium text-white bg-[#1E3A8A] rounded-md hover:bg-[#172D6E] cursor-pointer"
+          >
+            Load Default Pathway
+          </button>
         </div>
       </main>
     );
@@ -218,22 +249,27 @@ export function PathwayExplorerView({
             </div>
             {pickerOpen && (
               <div className="absolute right-0 left-0 mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-30 max-h-72 overflow-y-auto divide-y divide-stone-100">
-                {pickerOptions.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(opt.id);
-                      onFetchCareer(opt.id);
-                      setPickerQuery('');
-                      setPickerOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-[#FAF9F6] cursor-pointer"
-                  >
-                    <div className="text-sm font-medium text-stone-900 truncate">{opt.name}</div>
-                    <div className="text-[11px] text-stone-500 truncate">{opt.clusterName}</div>
-                  </button>
-                ))}
+                {pickerLoading ? (
+                  <div className="p-3 text-xs text-stone-500">Searching encyclopedia...</div>
+                ) : pickerOptions.length === 0 ? (
+                  <div className="p-3 text-xs text-stone-500">No matching professions found.</div>
+                ) : (
+                  pickerOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(opt.id);
+                        setPickerQuery('');
+                        setPickerOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-[#FAF9F6] cursor-pointer"
+                    >
+                      <div className="text-sm font-medium text-stone-900 truncate">{opt.name}</div>
+                      <div className="text-[11px] text-stone-500 truncate">{opt.clusterName}</div>
+                    </button>
+                  ))
+                )}
               </div>
             )}
           </div>

@@ -10,7 +10,8 @@ import { CAREER_CLUSTERS } from './data/clusters.ts';
 import type { CareerProfile, ClusterWithStats } from './types/career.ts';
 
 const CHECKLIST_STORAGE_KEY = 'careerating_checklist_v1';
-const COMPARE_STORAGE_KEY = 'ascend_compare_ids_v1';
+const COMPARE_STORAGE_KEY = 'careerating_compare_ids_v1';
+const LEGACY_COMPARE_STORAGE_KEY = 'ascend_compare_ids_v1';
 
 const FALLBACK_CLUSTERS: ClusterWithStats[] = CAREER_CLUSTERS.map((cl) => {
   const inCluster = INITIAL_CAREERS.filter((c) => c.clusterId === cl.id);
@@ -31,21 +32,54 @@ function buildSeedMap(): Record<string, CareerProfile> {
   return map;
 }
 
+function parseHashRoute(): { view: AppView; careerId?: string } {
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if (!raw) return { view: 'catalog' };
+  const parts = raw.split('/').map(decodeURIComponent);
+  if (parts[0] === 'career' && parts[1]) {
+    return { view: 'profile', careerId: parts[1] };
+  }
+  if (parts[0] === 'pathway') {
+    return { view: 'pathway', careerId: parts[1] || undefined };
+  }
+  if (parts[0] === 'compare') {
+    return { view: 'compare' };
+  }
+  return { view: 'catalog' };
+}
+
+function formatHashRoute(view: AppView, careerId?: string): string {
+  if (view === 'profile' && careerId) return `#/career/${encodeURIComponent(careerId)}`;
+  if (view === 'pathway' && careerId) return `#/pathway/${encodeURIComponent(careerId)}`;
+  if (view === 'pathway') return '#/pathway';
+  if (view === 'compare') return '#/compare';
+  return '#/';
+}
+
 export default function App() {
   const [clusters, setClusters] = useState<ClusterWithStats[]>(FALLBACK_CLUSTERS);
   const [profileCache, setProfileCache] = useState<Record<string, CareerProfile>>(buildSeedMap);
   const profileCacheRef = useRef<Record<string, CareerProfile>>(profileCache);
   profileCacheRef.current = profileCache;
+  const inFlightRef = useRef(new Map<string, Promise<CareerProfile | null>>());
 
-  const [currentView, setCurrentView] = useState<AppView>('catalog');
-  const [activeCareerId, setActiveCareerId] = useState<string>(INITIAL_CAREERS[0].id);
+  const initialRoute = parseHashRoute();
+  const [currentView, setCurrentView] = useState<AppView>(initialRoute.view);
+  const [activeCareerId, setActiveCareerId] = useState<string>(
+    initialRoute.careerId || INITIAL_CAREERS[0].id
+  );
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
   const [compareIds, setCompareIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(COMPARE_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as string[]) : ['aerospace-engineer', 'clinical-surgeon'];
+      const saved =
+        localStorage.getItem(COMPARE_STORAGE_KEY) ||
+        localStorage.getItem(LEGACY_COMPARE_STORAGE_KEY);
+      if (!saved) return ['aerospace-engineer', 'clinical-surgeon'];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return ['aerospace-engineer', 'clinical-surgeon'];
+      return Array.from(new Set(parsed.filter((x): x is string => typeof x === 'string' && x.length > 0))).slice(0, 3);
     } catch {
       return ['aerospace-engineer', 'clinical-surgeon'];
     }
@@ -77,36 +111,63 @@ export default function App() {
   const fetchCareerProfile = useCallback(async (id: string): Promise<CareerProfile | null> => {
     const cached = profileCacheRef.current[id];
     if (cached) return cached;
-    try {
-      const res = await fetch(`/api/occupations/${encodeURIComponent(id)}`);
-      if (!res.ok) return null;
-      const profile = (await res.json()) as CareerProfile;
-      setProfileCache((prev) => ({ ...prev, [profile.id]: profile }));
-      return profile;
-    } catch {
-      return null;
-    }
+    const existing = inFlightRef.current.get(id);
+    if (existing) return existing;
+
+    const promise = fetch(`/api/occupations/${encodeURIComponent(id)}`)
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const profile = (await res.json()) as CareerProfile;
+        setProfileCache((prev) => ({ ...prev, [profile.id]: profile }));
+        return profile;
+      })
+      .catch(() => null)
+      .finally(() => {
+        inFlightRef.current.delete(id);
+      });
+
+    inFlightRef.current.set(id, promise);
+    return promise;
   }, []);
 
-  // Load cluster stats on mount
+  // Load cluster stats on mount & listen for browser back/forward hash changes
   useEffect(() => {
     refreshClusters();
+    const handleHashChange = () => {
+      const parsed = parseHashRoute();
+      setCurrentView(parsed.view);
+      if (parsed.careerId) {
+        setActiveCareerId(parsed.careerId);
+      }
+      setProfileError(null);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [refreshClusters]);
 
   // Ensure activeCareerId is hydrated whenever profile or pathway view opens
   useEffect(() => {
     if ((currentView === 'profile' || currentView === 'pathway') && activeCareerId) {
       if (!profileCacheRef.current[activeCareerId]) {
+        let cancelled = false;
         setLoadingProfile(true);
         setProfileError(null);
         fetchCareerProfile(activeCareerId)
           .then((res) => {
-            if (!res) setProfileError(`Could not load profession "${activeCareerId}".`);
+            if (!cancelled && !res) {
+              setProfileError(`Could not load profession "${activeCareerId}".`);
+            }
           })
-          .finally(() => setLoadingProfile(false));
-      } else {
-        setProfileError(null);
+          .finally(() => {
+            if (!cancelled) setLoadingProfile(false);
+          });
+        return () => {
+          cancelled = true;
+        };
       }
+      setLoadingProfile(false);
+      setProfileError(null);
     }
   }, [currentView, activeCareerId, fetchCareerProfile]);
 
@@ -161,34 +222,32 @@ export default function App() {
     });
   }, []);
 
+  const navigateTo = useCallback((view: AppView, careerId?: string) => {
+    const targetCareerId = careerId || activeCareerId;
+    if (careerId) {
+      setActiveCareerId(careerId);
+    }
+    setProfileError(null);
+    setCurrentView(view);
+    const nextHash = formatHashRoute(view, view === 'profile' || view === 'pathway' ? targetCareerId : undefined);
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeCareerId]);
+
   const openProfile = useCallback(
     (careerId: string) => {
-      setActiveCareerId(careerId);
-      setProfileError(null);
-      setCurrentView('profile');
-      if (!profileCacheRef.current[careerId]) {
-        setLoadingProfile(true);
-        fetchCareerProfile(careerId)
-          .then((res) => {
-            if (!res) setProfileError(`Could not load profession "${careerId}".`);
-          })
-          .finally(() => setLoadingProfile(false));
-      }
-      window.scrollTo({ top: 0, behavior: 'auto' });
+      navigateTo('profile', careerId);
     },
-    [fetchCareerProfile]
+    [navigateTo]
   );
 
   const openPathway = useCallback(
     (careerId: string) => {
-      setActiveCareerId(careerId);
-      setCurrentView('pathway');
-      if (!profileCacheRef.current[careerId]) {
-        fetchCareerProfile(careerId);
-      }
-      window.scrollTo({ top: 0, behavior: 'auto' });
+      navigateTo('pathway', careerId);
     },
-    [fetchCareerProfile]
+    [navigateTo]
   );
 
   const activeCareer = profileCache[activeCareerId] || null;
@@ -199,10 +258,7 @@ export default function App() {
       <TopBar
         currentView={currentView}
         compareCount={compareIds.length}
-        onNavigate={(view) => {
-          setCurrentView(view);
-          window.scrollTo({ top: 0, behavior: 'auto' });
-        }}
+        onNavigate={(view) => navigateTo(view)}
         onOpenQuickSearch={() => setIsSearchOpen(true)}
       />
 
@@ -233,7 +289,7 @@ export default function App() {
                 <p className="font-serif text-xl text-stone-900">{profileError}</p>
                 <button
                   type="button"
-                  onClick={() => setCurrentView('catalog')}
+                  onClick={() => navigateTo('catalog')}
                   className="px-4 py-2 text-sm font-medium text-white bg-[#1E3A8A] rounded-md hover:bg-[#172D6E] cursor-pointer"
                 >
                   Return to All 18 Clusters
@@ -246,11 +302,11 @@ export default function App() {
                 career={activeCareer}
                 allCareers={cachedCareersList}
                 isCompared={compareIds.includes(activeCareer.id)}
-                onBackToCatalog={() => setCurrentView('catalog')}
+                onBackToCatalog={() => navigateTo('catalog')}
                 onSelectCareer={openProfile}
                 onToggleCompare={handleToggleCompare}
                 onOpenPathway={openPathway}
-                onOpenCompareView={() => setCurrentView('compare')}
+                onOpenCompareView={() => navigateTo('compare')}
               />
             )
           )
@@ -262,7 +318,7 @@ export default function App() {
             compareIds={compareIds}
             onToggleCompare={handleToggleCompare}
             onSelectCareer={openProfile}
-            onBackToCatalog={() => setCurrentView('catalog')}
+            onBackToCatalog={() => navigateTo('catalog')}
           />
         )}
 
@@ -291,21 +347,21 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-5">
             <button
               type="button"
-              onClick={() => setCurrentView('catalog')}
+              onClick={() => navigateTo('catalog')}
               className="hover:text-stone-900 cursor-pointer"
             >
               All 18 Clusters
             </button>
             <button
               type="button"
-              onClick={() => setCurrentView('compare')}
+              onClick={() => navigateTo('compare')}
               className="hover:text-stone-900 cursor-pointer"
             >
               Compare Careers
             </button>
             <button
               type="button"
-              onClick={() => setCurrentView('pathway')}
+              onClick={() => navigateTo('pathway')}
               className="hover:text-stone-900 cursor-pointer"
             >
               Education Pathways

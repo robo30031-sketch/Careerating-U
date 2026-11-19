@@ -24,12 +24,19 @@ export function QuickSearchModal({
   const [results, setResults] = useState<OccupationSummary[]>([]);
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
+      setActiveIndex(0);
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
       setTimeout(() => inputRef.current?.focus(), 40);
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
     }
   }, [isOpen]);
 
@@ -58,6 +65,7 @@ export function QuickSearchModal({
           if (data && Array.isArray(data.items)) {
             setResults(data.items);
             setTotalMatches(data.total);
+            setActiveIndex(0);
           }
         })
         .catch(() => {
@@ -128,10 +136,19 @@ export function QuickSearchModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && results.length > 0) {
+              if (e.key === 'ArrowDown' && results.length > 0) {
                 e.preventDefault();
-                onSelectCareer(results[0].id);
-                onClose();
+                setActiveIndex((prev) => (prev + 1) % results.length);
+              } else if (e.key === 'ArrowUp' && results.length > 0) {
+                e.preventDefault();
+                setActiveIndex((prev) => (prev - 1 + results.length) % results.length);
+              } else if (e.key === 'Enter' && results.length > 0) {
+                e.preventDefault();
+                const picked = results[activeIndex] || results[0];
+                if (picked) {
+                  onSelectCareer(picked.id);
+                  onClose();
+                }
               }
             }}
             placeholder="Search 1,000+ professions by title, alias, subject, tool, or cluster..."
@@ -164,15 +181,18 @@ export function QuickSearchModal({
               No professions matched "{query}". Try searching for a role like "Welder", "Geneticist", "Actuary", or a subject like "Biology".
             </div>
           ) : (
-            results.map((career) => (
+            results.map((career, idx) => (
               <button
                 key={career.id}
                 type="button"
+                onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => {
                   onSelectCareer(career.id);
                   onClose();
                 }}
-                className="w-full text-left px-5 py-3.5 hover:bg-white transition-colors flex items-center justify-between gap-4 cursor-pointer"
+                className={`w-full text-left px-5 py-3.5 transition-colors flex items-center justify-between gap-4 cursor-pointer ${
+                  idx === activeIndex ? 'bg-white' : 'hover:bg-white'
+                }`}
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500 mb-0.5">

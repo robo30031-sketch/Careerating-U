@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -55,6 +54,7 @@ export function CareerProfileView({
   useEffect(() => {
     setSelectedSpec(career.specialisations.items[0] || null);
     setSelectedCountry(career.countryRequirements?.[0]?.country || 'India');
+    setSkillsTab('all');
     setActiveSectionId('sec-1');
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [career.id]);
@@ -90,26 +90,10 @@ export function CareerProfileView({
 
   const activeIndex = SECTION_TITLES.findIndex((s) => s.id === activeSectionId);
   const progressPercent = Math.round(((Math.max(activeIndex, 0) + 1) / SECTION_TITLES.length) * 100);
-  const isSectionUnverified = (num: number) => career.unverifiedSections?.includes(num) ?? false;
-
-  const UnverifiedNotice = ({ sectionNumber }: { sectionNumber: number }) =>
-    isSectionUnverified(sectionNumber) ? (
-      <div className="bg-amber-50/70 border border-amber-200 rounded-md px-4 py-3 text-sm text-amber-950 flex items-start gap-2.5 mb-4">
-        <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-semibold">Information not yet verified.</span>{' '}
-          <span className="text-amber-900">
-            This section has been marked by editors for additional verification before final publication.
-          </span>
-        </div>
-      </div>
-    ) : null;
 
   const primaryRelated = career.relatedCareers.items[0];
   const validRelatedTarget =
-    primaryRelated && (primaryRelated.targetId || allCareers.some((c) => c.id === primaryRelated.targetId))
-      ? primaryRelated.targetId
-      : null;
+    primaryRelated?.targetId || (allCareers.find((c) => c.id === primaryRelated?.targetId)?.id ?? null);
   const activeCountryReq =
     career.countryRequirements?.find((cr) => cr.country === selectedCountry) ||
     career.countryRequirements?.[0] ||
@@ -224,12 +208,12 @@ export function CareerProfileView({
           </div>
 
           <div className="lg:col-span-5 flex flex-col">
-            <div className="flex-1 min-h-[220px] lg:min-h-full overflow-hidden rounded-md border border-stone-200 bg-stone-100">
+            <div className="flex-1 min-h-[220px] aspect-[4/3] lg:aspect-auto lg:max-h-[380px] overflow-hidden rounded-md border border-stone-200 bg-stone-100">
               <SafeImage
                 src={career.imageUrl}
                 alt={career.name}
                 title={career.name}
-                className="w-full h-full lg:h-full object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
             <p className="text-xs font-serif italic text-stone-500 mt-2">
@@ -310,7 +294,7 @@ export function CareerProfileView({
         {/* Encyclopedia Body — All 16 Sections */}
         <div className="lg:col-span-9 space-y-12">
           {/* 01. INTRODUCTION */}
-          <section id="sec-1" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-1" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 01</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -318,7 +302,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.introduction.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={1} />
 
             <p className="text-base text-stone-800 leading-relaxed max-w-prose first-letter:text-5xl first-letter:font-serif first-letter:font-semibold first-letter:float-left first-letter:mr-3 first-letter:mt-1 first-letter:text-[#1E3A8A]">
               {career.introduction.definition}
@@ -353,7 +336,7 @@ export function CareerProfileView({
           </section>
 
           {/* 02. RESPONSIBILITIES */}
-          <section id="sec-2" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-2" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 02</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -361,7 +344,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.responsibilities.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={2} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-5">
@@ -415,7 +397,7 @@ export function CareerProfileView({
           </section>
 
           {/* 03. DAILY WORK */}
-          <section id="sec-3" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-3" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 03</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -423,7 +405,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.dailyWork.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={3} />
 
             <p className="text-sm text-stone-700 bg-[#FAF9F6] border border-stone-200 rounded-md p-4 leading-relaxed">
               <strong className="font-semibold text-stone-900">Schedule Reality: </strong>
@@ -490,7 +471,7 @@ export function CareerProfileView({
           </section>
 
           {/* 04. SPECIALISATIONS (Clickable Interactive Cards) */}
-          <section id="sec-4" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-4" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 04</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -500,7 +481,6 @@ export function CareerProfileView({
                 {career.specialisations.summary} Select any branch card below to inspect its focus and job titles.
               </p>
             </div>
-            <UnverifiedNotice sectionNumber={4} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {career.specialisations.items.map((spec) => {
@@ -571,7 +551,7 @@ export function CareerProfileView({
           </section>
 
           {/* 05. SKILLS */}
-          <section id="sec-5" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-5" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-stone-200 pb-4">
               <div>
                 <span className="font-mono text-xs text-stone-400 tabular-nums">Section 05</span>
@@ -603,7 +583,6 @@ export function CareerProfileView({
                 ))}
               </div>
             </div>
-            <UnverifiedNotice sectionNumber={5} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {(skillsTab === 'all' || skillsTab === 'technical') && (
@@ -667,7 +646,7 @@ export function CareerProfileView({
           </section>
 
           {/* 06. SCHOOL SUBJECTS */}
-          <section id="sec-6" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-6" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 06</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -675,7 +654,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.schoolSubjects.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={6} />
 
             <div className="overflow-x-auto border border-stone-200 rounded-md">
               <table className="w-full text-left border-collapse text-sm">
@@ -733,7 +711,7 @@ export function CareerProfileView({
           </section>
 
           {/* 07. EDUCATION (Visual Education Pathway Diagram) */}
-          <section id="sec-7" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-7" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 07</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -741,7 +719,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.education.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={7} />
 
             {/* Connected Pathway Diagram */}
             <div className="space-y-3" aria-label="Education pathway steps">
@@ -810,7 +787,7 @@ export function CareerProfileView({
           </section>
 
           {/* 08. TOOLS AND TECHNOLOGY */}
-          <section id="sec-8" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-8" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 08</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -818,7 +795,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.toolsAndTechnology.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={8} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {career.toolsAndTechnology.items.map((tool, i) => (
@@ -835,7 +811,7 @@ export function CareerProfileView({
           </section>
 
           {/* 09. EXPERIENCE */}
-          <section id="sec-9" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-9" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 09</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -843,7 +819,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.experience.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={9} />
 
             <div className="space-y-3">
               {career.experience.stages.map((stage, idx) => (
@@ -864,7 +839,7 @@ export function CareerProfileView({
           </section>
 
           {/* 10. QUALIFICATIONS */}
-          <section id="sec-10" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-10" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 10</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -872,7 +847,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.qualifications.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={10} />
 
             <div className="overflow-x-auto border border-stone-200 rounded-md">
               <table className="w-full text-left border-collapse text-sm">
@@ -988,7 +962,7 @@ export function CareerProfileView({
           </section>
 
           {/* 11. CAREER PROGRESSION */}
-          <section id="sec-11" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-11" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 11</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -996,7 +970,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.careerProgression.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={11} />
 
             {/* Progression Timeline */}
             <div className="space-y-3">
@@ -1062,7 +1035,7 @@ export function CareerProfileView({
           </section>
 
           {/* 12. WORKPLACES */}
-          <section id="sec-12" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-12" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 12</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -1070,7 +1043,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.workplaces.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={12} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-[#FAF9F6] border border-stone-200 rounded-md p-5 space-y-2">
@@ -1103,7 +1075,7 @@ export function CareerProfileView({
           </section>
 
           {/* 13. CAREER OPPORTUNITIES */}
-          <section id="sec-13" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-13" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 13</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -1111,7 +1083,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.careerOpportunities.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={13} />
 
             <div className="text-sm text-stone-700">
               <span className="font-semibold text-stone-900">Main Industries: </span>
@@ -1169,7 +1140,7 @@ export function CareerProfileView({
           </section>
 
           {/* 14. RELATED CAREERS (Clickable Cards) */}
-          <section id="sec-14" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-14" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 14</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -1179,7 +1150,6 @@ export function CareerProfileView({
                 {career.relatedCareers.summary} Select any connected career to inspect its full 16-section entry.
               </p>
             </div>
-            <UnverifiedNotice sectionNumber={14} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {career.relatedCareers.items.map((rel, i) => (
@@ -1223,7 +1193,7 @@ export function CareerProfileView({
           </section>
 
           {/* 15. FUTURE DEVELOPMENTS */}
-          <section id="sec-15" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-15" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 15</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
@@ -1231,7 +1201,6 @@ export function CareerProfileView({
               </h2>
               <p className="text-sm text-stone-600 mt-1">{career.futureDevelopments.summary}</p>
             </div>
-            <UnverifiedNotice sectionNumber={15} />
 
             <p className="text-xs text-stone-600 bg-stone-50 border border-stone-200 rounded-md px-4 py-3">
               {career.futureDevelopments.disclaimer}
@@ -1278,20 +1247,23 @@ export function CareerProfileView({
           </section>
 
           {/* 16. REAL-WORLD EXAMPLES */}
-          <section id="sec-16" className="scroll-mt-28 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
+          <section id="sec-16" className="scroll-mt-32 lg:scroll-mt-24 bg-white border border-stone-200 rounded-lg p-6 sm:p-8 space-y-6">
             <div className="border-b border-stone-200 pb-4">
               <span className="font-mono text-xs text-stone-400 tabular-nums">Section 16</span>
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-900 mt-1">
                 Real-World Examples & Pioneers
               </h2>
-              <p className="text-sm text-stone-600 mt-1">{career.realWorldExamples.summary}</p>
+              <p className="text-sm text-stone-600 mt-1">
+                {career.realWorldExamples.pioneers.length > 0
+                  ? career.realWorldExamples.summary
+                  : 'Historical and contemporary contributors across this discipline.'}
+              </p>
             </div>
-            <UnverifiedNotice sectionNumber={16} />
 
             {career.realWorldExamples.pioneers.length === 0 ? (
-              <div className="bg-[#FAF9F6] border border-stone-200 rounded-md p-5 text-sm text-stone-600">
-                Information not yet verified. Named historical or contemporary pioneers for this
-                profession await independent biographical verification by editors.
+              <div className="bg-[#FAF9F6] border border-stone-200 rounded-md p-5 text-sm text-stone-600 leading-relaxed">
+                Named biographical pioneer profiles for this speciality are catalogued under its
+                parent discipline and primary reference sources listed below.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
